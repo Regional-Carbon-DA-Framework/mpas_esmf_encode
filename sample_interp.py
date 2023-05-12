@@ -31,7 +31,7 @@ if __name__=='__main__':
         
     meshFile='mpas_esmf.nc'
     cellGrid=ESMF.Mesh(filename=meshFile, filetype=ESMF.FileFormat.ESMFMESH)    
-    cellField=ESMF.Field(cellGrid, name='cellLocs')
+    cellField=ESMF.Field(cellGrid, name='cellLocs', meshloc=1)
     cellField.data[...]=-999.
 
     gaus2cell=ESMF.Regrid(gausField, cellField,
@@ -40,8 +40,8 @@ if __name__=='__main__':
     cellField=gaus2cell(gausField, cellField)
     varCell=cellField.data.copy()
 
-    latCell=cellGrid.get_coords(1).copy()
-    lonCell=cellGrid.get_coords(0).copy()
+    latCell=cellGrid.get_coords(1, meshloc=1).copy()
+    lonCell=cellGrid.get_coords(0, meshloc=1).copy()
     lonCell[lonCell<0]+=360
 
     from scipy.interpolate import griddata
