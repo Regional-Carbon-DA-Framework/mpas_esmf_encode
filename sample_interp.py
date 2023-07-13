@@ -14,19 +14,13 @@ if __name__=='__main__':
     with nc.Dataset(fName, 'r') as infile:
         lonGrid=infile['lon'][()]
         latGrid=infile['lat'][()]
-        varGrid=infile['tmpsfc'][0]
+        varGrid=infile['tmpsfc'][0].T
 
-    gausGrid = ESMF.Grid(np.array([lonGrid.shape[0], lonGrid.shape[1]]), 
-                        coord_sys=ESMF.CoordSys.SPH_DEG,
-                        staggerloc=ESMF.StaggerLoc.CENTER,
-                        num_peri_dims=1, periodic_dim=0, pole_dim=1)
-    gausGridCoordLat = gausGrid.get_coords(1)
-    gausGridCoordLon = gausGrid.get_coords(0)
+    gausGrid = ESMF.Grid(filename='scrip_gaussian.nc',
+                         filetype=ESMF.FileFormat.SCRIP,
+                         add_corner_stagger=True)
 
-    gausGridCoordLon[:] = lonGrid
-    gausGridCoordLat[:] = latGrid
-
-    gausField = ESMF.Field(gausGrid, name='gausField')
+    gausField = ESMF.Field(gausGrid, name='gausField', staggerloc=ESMF.StaggerLoc.CENTER)
     gausField.data[()]=varGrid
         
     meshFile='mpas_esmf.nc'
@@ -35,7 +29,8 @@ if __name__=='__main__':
     cellField.data[...]=-999.
 
     gaus2cell=ESMF.Regrid(gausField, cellField,
-                          regrid_method=ESMF.RegridMethod.BILINEAR,
+                          #regrid_method=ESMF.RegridMethod.BILINEAR,
+                          regrid_method=ESMF.RegridMethod.CONSERVE,
                           unmapped_action=ESMF.UnmappedAction.IGNORE)
     cellField=gaus2cell(gausField, cellField)
     varCell=cellField.data.copy()
@@ -47,13 +42,19 @@ if __name__=='__main__':
     from scipy.interpolate import griddata
 
     x, y, z=lonCell, latCell, varCell
-    varGrid=griddata(
+    varGrid_new=griddata(
         np.array([x, y]).T, z,
         np.array([lonGrid.flatten(), latGrid.flatten()]).T,
         method='linear').reshape(*lonGrid.shape)
 
     clevs=np.arange(220, 340+1.E-6, 20)
-    plt.contourf(lonGrid, latGrid, varGrid, cmap='jet', extend='both', levels=clevs)
+
+    plt.contourf(lonGrid, latGrid, varGrid.T, cmap='jet', extend='both', levels=clevs)
     plt.colorbar()
-    plt.savefig('test')
+    plt.savefig('old')
+    plt.close('all')
+    
+    plt.contourf(lonGrid, latGrid, varGrid_new, cmap='jet', extend='both', levels=clevs)
+    plt.colorbar()
+    plt.savefig('new')
     
